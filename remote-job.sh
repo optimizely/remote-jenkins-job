@@ -41,6 +41,9 @@ done
 echo "PARAMS: $PARAMS"
 
 # Queue up the job
+# nb You must use the buildWithParameters build invocation as this
+# is the only mechanism of receiving the "Queued" job id (via HTTP Location header)
+
 REMOTE_JOB_URL="$JENKINS_URL/job/$JOB_NAME/buildWithParameters?$PARAMS"
 echo "Calling REMOTE_JOB_URL: $REMOTE_JOB_URL"
 
