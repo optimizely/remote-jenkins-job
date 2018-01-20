@@ -7,19 +7,20 @@
 # -j: JOB_NAME on jenkins host
 # -p: parameter to pass in. Send multiple parameters by passing in multiple -p flags
 # -t: BUILD_TOKEN on remote machine to run job
+# -i: Tell curl to ignore cert validation
 ###
 
 # Number of seconds before timing out
 [ -z "$BUILD_TIMEOUT_SECONDS" ] && BUILD_TIMEOUT_SECONDS=3600
 # Number of seconds between polling attempts
 [ -z "$POLL_INTERVAL" ] && POLL_INTERVAL=5
-
-while getopts j:p:t:u: opt; do
+while getopts j:p:t:u:i opt; do
   case $opt in
     p) parameters+=("$OPTARG");;
     t) parameters+=("token=$OPTARG");;
     j) JOB_NAME=$OPTARG;;
     u) JENKINS_URL=$OPTARG;;
+    i) CURL_OPTS="-k" # tell curl to ignore cert validation
     #...
   esac
 done
@@ -47,7 +48,7 @@ echo "PARAMS: $PARAMS"
 REMOTE_JOB_URL="$JENKINS_URL/job/$JOB_NAME/buildWithParameters?$PARAMS"
 echo "Calling REMOTE_JOB_URL: $REMOTE_JOB_URL"
 
-QUEUED_URL=$(curl -sSL -D - $REMOTE_JOB_URL |\
+QUEUED_URL=$(curl -sSL $CURL_OPTS -D - $REMOTE_JOB_URL |\
 perl -n -e '/^Location: (.*)$/ && print "$1\n"')
 [ -z "$QUEUED_URL" ] && { echo "No QUEUED_URL was found.  Did you remember to set a token (-t)?"; exit 1; }
 
@@ -56,7 +57,7 @@ QUEUED_URL=${QUEUED_URL%$'\r'}api/json
 
 # Fetch the executable.url from the QUEUED url
 JOB_URL=`curl -sSL $QUEUED_URL | jq -r '.executable.url'`
-
+[ "$JOB_URL" = "null" ] && unset JOB_URL
 # Check for status of queued job, whether it is running yet
 COUNTER=0
 while [ -z "$JOB_URL" ]; do
@@ -67,7 +68,8 @@ while [ -z "$JOB_URL" ]; do
   then
     break  # Skip entire rest of loop.
   fi
-  JOB_URL=`curl -sSL $QUEUED_URL | jq -r '.executable.url'`
+  JOB_URL=`curl -sSL $CURL_OPTS $QUEUED_URL | jq -r '.executable.url'`
+  [ "$JOB_URL" = "null" ] && unset JOB_URL
 done
 echo "JOB_URL: $JOB_URL"
 
@@ -82,8 +84,8 @@ while [ "$IS_BUILDING" = "true" ]; do
   then
     break  # Skip entire rest of loop.
   fi
-  IS_BUILDING=`curl -sSL $JOB_URL/api/json | jq -r '.building'`
-  NEW_LINE_CURSOR=`curl -sSL $JOB_URL/consoleText | wc -l`
+  IS_BUILDING=`curl -sSL $CURL_OPTS $JOB_URL/api/json | jq -r '.building'`
+  NEW_LINE_CURSOR=`curl -sSL $CURL_OPTS $JOB_URL/consoleText | wc -l`
   LINE_COUNT=`expr $NEW_LINE_CURSOR - $OUTPUT_LINE_CURSOR`
   if [ "$LINE_COUNT" -gt 0 ];
   then
@@ -93,10 +95,10 @@ while [ "$IS_BUILDING" = "true" ]; do
 done
 
 echo $JOB_URL
-RESULT=`curl -sSL $JOB_URL/api/json | jq -r '.result'`
+RESULT=`curl -sSL $CURL_OPTS $JOB_URL/api/json | jq -r '.result'`
 if [ "$RESULT" = 'SUCCESS' ]
 then
-  echo 'BUILD RESULT: $RESULT'
+  echo "BUILD RESULT: $RESULT"
   exit 0
 else
   echo "BUILD RESULT: $RESULT - Build is unsuccessful, timed out, or status could not be obtained."
