@@ -13,7 +13,7 @@
 # Number of seconds before timing out
 [ -z "$BUILD_TIMEOUT_SECONDS" ] && BUILD_TIMEOUT_SECONDS=3600
 # Number of seconds between polling attempts
-[ -z "$POLL_INTERVAL" ] && POLL_INTERVAL=5
+[ -z "$POLL_INTERVAL" ] && POLL_INTERVAL=10
 while getopts j:p:t:u:i opt; do
   case $opt in
     p) parameters+=("$OPTARG");;
@@ -77,15 +77,22 @@ echo "JOB_URL: $JOB_URL"
 IS_BUILDING="true"
 COUNTER=0
 OUTPUT_LINE_CURSOR=0
-while [ "$IS_BUILDING" = "true" ]; do
+
+# Use until IS_BUILDING = false (instead of while IS_BUILDING = true)
+# to avoid false positives if curl command (IS_BUILDING) fails
+# while polling for status
+until [ "$IS_BUILDING" = "false" ]; do
   let COUNTER=COUNTER+$POLL_INTERVAL
   sleep $POLL_INTERVAL
   if [ "$COUNTER" -gt $BUILD_TIMEOUT_SECONDS ];
   then
+    echo "TIME-OUT: Exceeded $BUILD_TIMEOUT_SECONDS seconds"
     break  # Skip entire rest of loop.
   fi
   IS_BUILDING=`curl -sSL $CURL_OPTS $JOB_URL/api/json | jq -r '.building'`
+  # Grab total lines in console output
   NEW_LINE_CURSOR=`curl -sSL $CURL_OPTS $JOB_URL/consoleText | wc -l`
+  # subtract line count from cursor
   LINE_COUNT=`expr $NEW_LINE_CURSOR - $OUTPUT_LINE_CURSOR`
   if [ "$LINE_COUNT" -gt 0 ];
   then
@@ -94,7 +101,6 @@ while [ "$IS_BUILDING" = "true" ]; do
   OUTPUT_LINE_CURSOR=$NEW_LINE_CURSOR
 done
 
-echo $JOB_URL
 RESULT=`curl -sSL $CURL_OPTS $JOB_URL/api/json | jq -r '.result'`
 if [ "$RESULT" = 'SUCCESS' ]
 then
