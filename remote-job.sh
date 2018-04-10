@@ -56,7 +56,7 @@ perl -n -e '/^Location: (.*)$/ && print "$1\n"')
 QUEUED_URL=${QUEUED_URL%$'\r'}api/json
 
 # Fetch the executable.url from the QUEUED url
-JOB_URL=`curl -sSL $QUEUED_URL | jq -r '.executable.url'`
+JOB_URL=`curl -sSL $CURL_OPTS $QUEUED_URL | jq -r '.executable.url'`
 [ "$JOB_URL" = "null" ] && unset JOB_URL
 # Check for status of queued job, whether it is running yet
 COUNTER=0
@@ -96,7 +96,7 @@ until [ "$IS_BUILDING" = "false" ]; do
   LINE_COUNT=`expr $NEW_LINE_CURSOR - $OUTPUT_LINE_CURSOR`
   if [ "$LINE_COUNT" -gt 0 ];
   then
-    curl -sSL $JOB_URL/consoleText | tail -$LINE_COUNT
+    curl -sSL $CURL_OPTS $JOB_URL/consoleText | tail -$LINE_COUNT
   fi
   OUTPUT_LINE_CURSOR=$NEW_LINE_CURSOR
 done
