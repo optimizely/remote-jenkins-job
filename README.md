@@ -14,7 +14,7 @@ jq, curl, Jenkins
 
 Extremely simple, use as follows:
 
-`remote-job.sh -u https://jenkins-url.com -j JOB_NAME -p "PARAM1=999" -p "PARAM2=123" -t BUILD_TOKEN -i`
+`remote-job.sh -u https://jenkins-url.com -j JOB_NAME -p "PARAM1=999" -p "PARAM2=123" -t BUILD_TOKEN -s JENKINS_USER -r APITOKEN -i`
 
 Where the following parameters are set:
 
@@ -22,6 +22,8 @@ Where the following parameters are set:
 * `-j`: JOB_NAME on jenkins host (eg master-build).
 * `-p`: parameter(s) to pass in. Send multiple parameters by passing in multiple `-p` flags.
 * `-t`: BUILD_TOKEN on remote machine to run job
+* `-s`: Jenkins user on remote machine to authenticate
+* `-r`: Jenkins user API token on remote machine to authenticate
 * `-i`: ignore certificate validation (useful if you see curl SSL errors while polling)
 
 You can optionally set the polling interval (`POLL_INTERVAL`, default 5) and build timeout (`BUILD_TIMEOUT_SECONDS`, default 3600) as environment variables.
