@@ -35,6 +35,7 @@ shift $((OPTIND -1))
 [ -z "$JENKINS_URL" ] && { logger -s "[ERROR] $(date) JENKINS_URL (-u) not set"; exit 1; }
 logger -s "[INFO] $(date) JENKINS_URL: $JENKINS_URL"
 [ -z "$JOB_NAME" ] && { logger -s "[ERROR] $(date) JOB_NAME (-j) not set"; exit 1; }
+$JOB_NAME=${JOB_NAME// /%20}
 logger -s "[INFO] $(date) JOB_NAME: $JOB_NAME"
 
 logger -s "[INFO] $(date) The whole list of values is '${parameters[@]}'"
