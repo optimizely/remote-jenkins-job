@@ -12,7 +12,7 @@
 # -i: Tell curl to ignore cert validation
 ###
 
-set -xe
+set -e
 
 # Number of seconds before timing out
 [ -z "$BUILD_TIMEOUT_SECONDS" ] && BUILD_TIMEOUT_SECONDS=3600
