@@ -73,7 +73,7 @@ then
   perl -n -e '/^Location: (.*)$/ && print "$1\n"')
   echo "QUEUED_URL: $QUEUED_URL"
 else
-  REMOTE_JOB_URL="$JENKINS_URL/job/$JOB_NAME/buildWithParameters"
+  REMOTE_JOB_URL="$JENKINS_URL/job/$JOB_NAME/build"
   #echo "comando curl -X POST -sSL $CREDENTIALS $CURL_OPTS -D - --data-urlencode $JSON_PARAMS $REMOTE_JOB_URL"
   COMMAND="curl -X POST -sSL $CREDENTIALS $CURL_OPTS -D - --data-urlencode $JSON_PARAMS $REMOTE_JOB_URL"
   QUEUED_URL=`eval $COMMAND | perl -n -e '/^Location: (.*)$/ && print "$1\n"'`
@@ -88,29 +88,39 @@ echo "Calling REMOTE_JOB_URL: $REMOTE_JOB_URL"
 
 [ -z "$QUEUED_URL" ] && { echo "No QUEUED_URL was found.  Did you remember to set a token (-t)?"; exit 1; }
 
-# Remove extra \r at end, add /api/json path
-QUEUED_URL=${QUEUED_URL%$'\r'}api/json
+if [ ! -z "$PARAMS" ];
+then
+  # Remove extra \r at end, add /api/json path
+  QUEUED_URL=${QUEUED_URL%$'\r'}api/json
+  JOB_URL=`curl -sSL $CREDENTIALS $QUEUED_URL | jq -r '.executable.url'`
+else
+  QUEUED_URL=${QUEUED_URL%$'\r'}lastBuild/api/json
+  JOB_URL=$QUEUED_URL
+fi
 # Fetch the executable.url from the QUEUED url
 #eval `curl -sSL $CREDENTIALS $QUEUED_URL`
-JOB_URL=`curl -sSL $CREDENTIALS $QUEUED_URL | jq -r '.executable.url'`
+
+
 echo "QUEUED_URL: $QUEUED_URL"
 echo "JOB_URL: $JOB_URL"
 # echo "JOB_URL: $JOB_URL"
 [ "$JOB_URL" = "null" ] && unset JOB_URL
-# Check for status of queued job, whether it is running yet
-COUNTER=0
-while [ -z "$JOB_URL" ]; do
-  echo "The QUEUED counter is $COUNTER"
-  let COUNTER=COUNTER+$POLL_INTERVAL
-  sleep $POLL_INTERVAL
-  if [ "$COUNTER" -gt $BUILD_TIMEOUT_SECONDS ];
-  then
-    break  # Skip entire rest of loop.
-  fi
-  JOB_URL=`curl -sSL $CREDENTIALS $CURL_OPTS $QUEUED_URL | jq -r '.executable.url'`
-  [ "$JOB_URL" = "null" ] && unset JOB_URL
-done
-
+if [ ! -z "$PARAMS" ];
+then 
+  # Check for status of queued job, whether it is running yet
+  COUNTER=0
+  while [ -z "$JOB_URL" ]; do
+    echo "The QUEUED counter is $COUNTER"
+    let COUNTER=COUNTER+$POLL_INTERVAL
+    sleep $POLL_INTERVAL
+    if [ "$COUNTER" -gt $BUILD_TIMEOUT_SECONDS ];
+    then
+      break  # Skip entire rest of loop.
+    fi
+    JOB_URL=`curl -sSL $CREDENTIALS $CURL_OPTS $QUEUED_URL | jq -r '.executable.url'`
+    [ "$JOB_URL" = "null" ] && unset JOB_URL
+  done
+fi
 # Job is running
 IS_BUILDING="true"
 COUNTER=0
@@ -128,6 +138,7 @@ until [ "$IS_BUILDING" = "false" ]; do
     break  # Skip entire rest of loop.
   fi
   IS_BUILDING=`curl -sSL $CREDENTIALS $CURL_OPTS $JOB_URL/api/json | jq -r '.building'`
+  
   # Grab total lines in console output
   #NEW_LINE_CURSOR=`curl -sSL $CREDENTIALS $CURL_OPTS $JOB_URL/consoleText | wc -l`
   # subtract line count from cursor
