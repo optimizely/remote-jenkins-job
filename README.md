@@ -18,6 +18,8 @@ Extremely simple, use as follows:
 
 `remote-job.sh -u https://jenkins-url.com -j JOB_NAME -p "PARAM1=999" -p "PARAM2=123" -c username:password -i`
 
+`./remote-job.sh -u https://jenkins-ur.com:18080 -j JOB_NAME -c username:password -b '{"parameter": [{"name":"PARAM1", "value":"999"}, {"name":"PARAM2", "value":"123"}]}'`
+
 Where the following parameters are set:
 
 * `-u`: url of jenkins host
@@ -26,6 +28,7 @@ Where the following parameters are set:
 * `-t`: BUILD_TOKEN on remote machine to run job
 * `-i`: ignore certificate validation (useful if you see curl SSL errors while polling)
 * `-c`: Credentials (username:password)
+* `-b`: Json Params (not compatible with -p)
 
 You can optionally set the polling interval (`POLL_INTERVAL`, default 5) and build timeout (`BUILD_TIMEOUT_SECONDS`, default 3600) as environment variables.
 
