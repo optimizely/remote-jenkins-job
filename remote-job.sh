@@ -66,7 +66,9 @@ while [ -z "$JOB_URL" ]; do
   sleep $POLL_INTERVAL
   if [ "$COUNTER" -gt $BUILD_TIMEOUT_SECONDS ];
   then
-    break  # Skip entire rest of loop.
+    echo "Error: A job was queued, but it did not start running within $BUILD_TIMEOUT_SECONDS seconds"
+    echo "Queued job URL: $QUEUED_URL"
+    exit 1
   fi
   JOB_URL=`curl -sSL $CURL_OPTS $QUEUED_URL | jq -r '.executable.url'`
   [ "$JOB_URL" = "null" ] && unset JOB_URL
